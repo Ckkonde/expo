@@ -40,6 +40,46 @@ import kotlin.math.min
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import okhttp3.MediaType
+import okio.*
+
+typealias AssetLoadProgressListener = (AssetEntity, Double) -> Unit
+
+interface ProgressListener {
+  fun update(bytesRead: Long, contentLength: Long)
+}
+
+class ProgressResponseBody(
+  private val responseBody: ResponseBody,
+  private val progressListener: ProgressListener
+) : ResponseBody() {
+
+  private var bufferedSource: BufferedSource? = null
+
+  override fun contentType(): MediaType? = responseBody.contentType()
+
+  override fun contentLength(): Long = responseBody.contentLength()
+
+  override fun source(): BufferedSource {
+    if (bufferedSource == null) {
+      bufferedSource = source(responseBody.source()).buffer()
+    }
+    return bufferedSource!!
+  }
+
+  private fun source(source: Source): Source {
+    return object : ForwardingSource(source) {
+      var totalBytesRead: Long = 0
+
+      override fun read(sink: Buffer, byteCount: Long): Long {
+        val bytesRead = super.read(sink, byteCount)
+        totalBytesRead += if (bytesRead != -1L) bytesRead else 0
+        progressListener.update(totalBytesRead, responseBody.contentLength())
+        return bytesRead
+      }
+    }
+  }
+}
 
 /**
  * Utility class that holds all the logic for downloading data and files, such as update manifests
@@ -74,10 +114,11 @@ class FileDownloader(
   private suspend fun downloadAssetAndVerifyHashAndWriteToPath(
     request: Request,
     expectedBase64URLEncodedSHA256Hash: String?,
-    destination: File
+    destination: File,
+    progressListener: ProgressListener? = null
   ): FileDownloadResult {
     try {
-      val response = downloadData(request)
+      val response = downloadData(request, progressListener)
 
       if (!response.isSuccessful) {
         val message = "Asset download request not successful"
@@ -335,7 +376,8 @@ class FileDownloader(
   suspend fun downloadAsset(
     asset: AssetEntity,
     destinationDirectory: File?,
-    extraHeaders: JSONObject
+    extraHeaders: JSONObject,
+    assetLoadProgressListener: AssetLoadProgressListener? = null
   ): AssetDownloadResult {
     if (asset.url == null) {
       val message = "Failed to download asset ${asset.key}"
@@ -355,7 +397,15 @@ class FileDownloader(
         val downloadResult = downloadAssetAndVerifyHashAndWriteToPath(
           createRequestForAsset(asset, extraHeaders, configuration),
           asset.expectedHash,
-          path
+          path,
+          object: ProgressListener {
+            override fun update(bytesRead: Long, contentLength: Long) {
+              if (contentLength > 0) {
+                val progress = bytesRead.toDouble() / contentLength.toDouble()
+                assetLoadProgressListener?.invoke(asset, progress)
+              }
+            }
+          }
         )
 
         asset.downloadTime = Date()
@@ -370,7 +420,7 @@ class FileDownloader(
     }
   }
 
-  private suspend fun downloadData(request: Request): Response = suspendCancellableCoroutine { continuation ->
+  private suspend fun downloadData(request: Request, progressListener: ProgressListener? = null): Response = suspendCancellableCoroutine { continuation ->
     val call = client.newCall(request)
 
     continuation.invokeOnCancellation {
@@ -379,7 +429,13 @@ class FileDownloader(
 
     try {
       val response = call.execute()
-      continuation.resume(response)
+      if (response.body != null && progressListener != null) {
+        val wrappedBody = ProgressResponseBody(response.body!!, progressListener)
+        val wrappedResponse = response.newBuilder().body(wrappedBody).build()
+        continuation.resume(wrappedResponse)
+      } else {
+        continuation.resume(response)
+      }
     } catch (e: Exception) {
       continuation.resumeWithException(e)
     }

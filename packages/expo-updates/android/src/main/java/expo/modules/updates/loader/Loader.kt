@@ -46,9 +46,16 @@ abstract class Loader protected constructor(
   private var existingAssetList = mutableListOf<AssetEntity>()
   private var finishedAssetList = mutableListOf<AssetEntity>()
   private val _progressFlow = MutableSharedFlow<AssetLoadProgress>()
+  private var assetProgressMap = mutableMapOf<AssetEntity, Double>()
+  var assetLoadProgressBlock: ((Double) -> Unit)? = null
+
   val progressFlow: Flow<AssetLoadProgress> = _progressFlow.asSharedFlow()
 
   data class LoaderResult(val updateEntity: UpdateEntity?, val updateDirective: UpdateDirective?)
+
+  data class ProgressListener(
+    val onProgressUpdate: (asset: AssetEntity, progress: Double) -> Unit
+  )
 
   data class OnUpdateResponseLoadedResult(val shouldDownloadManifestIfPresentInResponse: Boolean)
 
@@ -58,6 +65,18 @@ abstract class Loader protected constructor(
     val failedAssetCount: Int,
     val totalAssetCount: Int
   )
+
+  fun progressListener(asset: AssetEntity, progress: Double) {
+    assetProgressMap[asset] = progress
+    notifyProgress()
+  }
+
+  private fun notifyProgress() {
+    if (assetTotal > 0) {
+      val progress = assetProgressMap.values.reduce { acc, value -> acc + value } / assetTotal.toDouble()
+      assetLoadProgressBlock?.invoke(progress)
+    }
+  }
 
   protected abstract suspend fun loadRemoteUpdate(
     database: UpdatesDatabase,
@@ -100,6 +119,8 @@ abstract class Loader protected constructor(
     erroredAssetList = mutableListOf()
     existingAssetList = mutableListOf()
     finishedAssetList = mutableListOf()
+    assetProgressMap = mutableMapOf<AssetEntity, Double>()
+    assetLoadProgressBlock = null
   }
 
   private fun finish(): LoaderResult {
@@ -248,6 +269,12 @@ abstract class Loader protected constructor(
       AssetLoadResult.ERRORED -> erroredAssetList.add(assetEntity)
     }
 
+    if (result == AssetLoadResult.FINISHED || result == AssetLoadResult.ALREADY_EXISTS) {
+      assetProgressMap[assetEntity] = 1.0;
+    }
+
+    notifyProgress()
+    
     // Emit progress update through Flow
     _progressFlow.emit(
       AssetLoadProgress(

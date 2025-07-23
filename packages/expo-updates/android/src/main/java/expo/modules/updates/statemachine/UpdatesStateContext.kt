@@ -107,6 +107,7 @@ class UpdatesStateContext private constructor(
         "isDownloading" to isDownloading,
         "isRestarting" to isRestarting,
         "restartCount" to restartCount,
+        "downloadProgress" to downloadProgress,
         "sequenceNumber" to sequenceNumber
       )
       if (latestManifest != null) {
@@ -144,6 +145,7 @@ class UpdatesStateContext private constructor(
         putBoolean("isRestarting", isRestarting)
         putInt("restartCount", restartCount)
         putInt("sequenceNumber", sequenceNumber)
+        putDouble("downloadProgress", downloadProgress)
         if (latestManifest != null) {
           putString("latestManifestString", latestManifest.toString())
         }
