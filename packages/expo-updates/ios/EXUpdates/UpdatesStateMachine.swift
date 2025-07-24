@@ -410,6 +410,7 @@ internal class UpdatesStateMachine {
         $0.isDownloading = false
         $0.downloadError = nil
         $0.isUpdatePending = true
+        $0.downloadProgress = 1.0
       }
     case .downloadCompleteWithRollback:
       return context.copyAndIncrementSequenceNumber {
