@@ -1,0 +1,10 @@
+# Download project files from Bolt
+# Then run locally:
+npm install
+npx expo start
+
+# For iOS simulator (Mac only):
+npx expo start --ios
+
+# For Android emulator:
+npx expo start --android
