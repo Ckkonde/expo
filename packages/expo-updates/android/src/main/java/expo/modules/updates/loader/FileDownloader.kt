@@ -40,8 +40,6 @@ import kotlin.math.min
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import okhttp3.MediaType
-import okio.*
 
 /**
  * Utility class that holds all the logic for downloading data and files, such as update manifests
@@ -77,7 +75,7 @@ class FileDownloader(
     request: Request,
     expectedBase64URLEncodedSHA256Hash: String?,
     destination: File,
-    progressListener: FileDownloadProgressListener? = null
+    progressListener: FileDownloadProgressListener? = null,
   ): FileDownloadResult {
     try {
       val response = downloadData(request, progressListener)

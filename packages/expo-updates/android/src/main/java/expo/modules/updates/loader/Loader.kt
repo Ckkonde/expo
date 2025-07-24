@@ -54,10 +54,6 @@ abstract class Loader protected constructor(
 
   data class LoaderResult(val updateEntity: UpdateEntity?, val updateDirective: UpdateDirective?)
 
-  data class ProgressListener(
-    val onProgressUpdate: (asset: AssetEntity, progress: Double) -> Unit
-  )
-
   data class OnUpdateResponseLoadedResult(val shouldDownloadManifestIfPresentInResponse: Boolean)
 
   data class AssetLoadProgress(
@@ -69,10 +65,10 @@ abstract class Loader protected constructor(
 
   fun assetLoadProgressListener(asset: AssetEntity, progress: Double) {
     assetProgressMap[asset] = progress
-    notifyProgress()
+    notifyAssetLoadProgress()
   }
 
-  private fun notifyProgress() {
+  private fun notifyAssetLoadProgress() {
     if (assetTotal > 0) {
       val progress = assetProgressMap.values.reduce { acc, value -> acc + value } / assetTotal.toDouble()
       assetLoadProgressBlock?.invoke(progress)
@@ -270,13 +266,13 @@ abstract class Loader protected constructor(
       AssetLoadResult.ERRORED -> erroredAssetList.add(assetEntity)
     }
 
+    // do not emit progress update for errored assets
+    // let the progress bar stay at whatever the last successful progress was
     if (result == AssetLoadResult.FINISHED || result == AssetLoadResult.ALREADY_EXISTS) {
       assetProgressMap[assetEntity] = 1.0;
+      notifyAssetLoadProgress()
     }
 
-    notifyProgress()
-    
-    // Emit progress update through Flow
     _progressFlow.emit(
       AssetLoadProgress(
         asset = assetEntity,

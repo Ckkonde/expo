@@ -269,14 +269,13 @@ open class AppLoader: NSObject {
     assetsToLoad.remove(asset)
     erroredAssets.append(asset)
     notifyProgress(withAsset: asset)
-    notifyAssetLoadProgress(asset: asset, progress: 0)
     if assetsToLoad.isEmpty {
       finish()
     }
     arrayLock.unlock()
   }
   
-  public func assetDownloadProgressBlock(asset: UpdateAsset, progress: Double) {
+  public func assetLoadProgressListener(asset: UpdateAsset, progress: Double) {
     arrayLock.lock()
     notifyAssetLoadProgress(asset: asset, progress: progress)
     arrayLock.unlock()

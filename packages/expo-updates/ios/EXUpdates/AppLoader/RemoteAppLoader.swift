@@ -107,7 +107,7 @@ public final class RemoteAppLoader: AppLoader {
           toPath: urlOnDisk.path,
           extraHeaders: extraHeaders.merging(asset.extraRequestHeaders ?? [:]) { current, _ in current },
           progressBlock: { fractionCompleted in
-            self.assetDownloadProgressBlock(asset: asset, progress: fractionCompleted)
+            self.assetLoadProgressListener(asset: asset, progress: fractionCompleted)
           }
         ) { data, response, _ in
           DispatchQueue.global().async {
