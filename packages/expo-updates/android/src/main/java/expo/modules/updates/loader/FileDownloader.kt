@@ -362,11 +362,8 @@ class FileDownloader(
           path,
           assetLoadProgressListener?.let { listener ->
             object: FileDownloadProgressListener {
-              override fun update(bytesRead: Long, contentLength: Long) {
-                if (contentLength > 0) {
-                  val progress = bytesRead.toDouble() / contentLength.toDouble()
-                  listener.invoke(progress)
-                }
+              override fun onProgressUpdate(progress: Double) {
+                listener.invoke(progress)
               }
             }
           }

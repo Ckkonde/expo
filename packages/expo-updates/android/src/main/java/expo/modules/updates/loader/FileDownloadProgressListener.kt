@@ -1,7 +1,6 @@
 package expo.modules.updates.loader
 
 import okhttp3.ResponseBody
-import expo.modules.updates.db.entity.AssetEntity
 import okhttp3.MediaType
 import okio.Buffer
 import okio.BufferedSource
@@ -9,8 +8,15 @@ import okio.ForwardingSource
 import okio.Source
 import okio.buffer
 
-interface FileDownloadProgressListener {
-  fun update(bytesRead: Long, contentLength: Long)
+internal interface FileDownloadProgressListener {
+  fun update(bytesRead: Long, contentLength: Long) {
+    // Only emit progress if content length is known
+    if (contentLength > 0) {
+      onProgressUpdate(bytesRead.toDouble() / contentLength.toDouble())
+    }
+  }
+  
+  fun onProgressUpdate(progress: Double) {}
 }
 
 internal class FileDownloadProgressResponseBody(
@@ -18,18 +24,15 @@ internal class FileDownloadProgressResponseBody(
   private val progressListener: FileDownloadProgressListener
 ) : ResponseBody() {
 
-  private var bufferedSource: BufferedSource? = null
-
   override fun contentType(): MediaType? = responseBody.contentType()
 
   override fun contentLength(): Long = responseBody.contentLength()
 
-  override fun source(): BufferedSource {
-    if (bufferedSource == null) {
-      bufferedSource = source(responseBody.source()).buffer()
-    }
-    return bufferedSource!!
+  private val bufferedSource by lazy {
+    source(responseBody.source()).buffer()
   }
+
+  override fun source(): BufferedSource = bufferedSource
 
   private fun source(source: Source): Source {
     return object : ForwardingSource(source) {
