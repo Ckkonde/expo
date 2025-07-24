@@ -47,7 +47,8 @@ abstract class Loader protected constructor(
   private var finishedAssetList = mutableListOf<AssetEntity>()
   private val _progressFlow = MutableSharedFlow<AssetLoadProgress>()
   private var assetProgressMap = mutableMapOf<AssetEntity, Double>()
-  var assetLoadProgressBlock: ((Double) -> Unit)? = null
+
+  internal var assetLoadProgressBlock: ((Double) -> Unit)? = null
 
   val progressFlow: Flow<AssetLoadProgress> = _progressFlow.asSharedFlow()
 
@@ -66,7 +67,7 @@ abstract class Loader protected constructor(
     val totalAssetCount: Int
   )
 
-  fun progressListener(asset: AssetEntity, progress: Double) {
+  fun assetLoadProgressListener(asset: AssetEntity, progress: Double) {
     assetProgressMap[asset] = progress
     notifyProgress()
   }
