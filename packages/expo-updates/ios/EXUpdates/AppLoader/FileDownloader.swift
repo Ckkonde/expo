@@ -70,7 +70,6 @@ public final class FileDownloader {
   private var config: UpdatesConfig!
   private var logger: UpdatesLogger!
 
-  // a dictionary to hold KVO observers, keyed by the task they are observing
   private var progressObservations: [URLSessionTask: NSKeyValueObservation] = [:]
   private let progressObservationsLock = NSLock()
 

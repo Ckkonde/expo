@@ -106,7 +106,8 @@ public final class RemoteAppLoader: AppLoader {
           verifyingHash: asset.expectedHash,
           toPath: urlOnDisk.path,
           extraHeaders: extraHeaders.merging(asset.extraRequestHeaders ?? [:]) { current, _ in current },
-          progressBlock: { fractionCompleted in
+          progressBlock: { [weak self] fractionCompleted in
+            guard let self = self else { return }
             self.assetLoadProgressListener(asset: asset, progress: fractionCompleted)
           }
         ) { data, response, _ in
